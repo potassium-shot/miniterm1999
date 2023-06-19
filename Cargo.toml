@@ -1,0 +1,16 @@
+[package]
+name = "miniterm1999"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.*"
+bytemuck = { version = "1.13.*", features = ["derive"] }
+image = "0.24.*"
+tokio = { version = "1.28.*", features = ["full"] }
+tracing = "0.1.*"
+tracing-subscriber = { version = "0.3.*", features = ["time"] }
+wgpu = "0.16.*"
+winit = "0.28.*"
