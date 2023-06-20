@@ -4,7 +4,7 @@ use crate::{character::Character, globals};
 
 pub struct CharacterBuffer {
     characters: Vec<Character>,
-    bounds: (u32, u32),
+    pub bounds: (u32, u32),
     pub cursor_position: (u32, u32),
 
     pending_change: Option<Range<usize>>,

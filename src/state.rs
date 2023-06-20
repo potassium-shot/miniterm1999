@@ -6,7 +6,8 @@ use winit::{
 };
 
 use crate::{
-    character::Character, character_buffer::CharacterBuffer, texture, vertex::Vertex, vertices,
+    character::Character, character_buffer::CharacterBuffer, shader_param::ShaderParam, texture,
+    vertex::Vertex, vertices,
 };
 
 #[rustfmt::skip]
@@ -29,19 +30,26 @@ pub struct State {
     base_render_pipeline: RenderPipeline,
     final_render_pipeline: RenderPipeline,
 
+    texture_bind_group_layout: BindGroupLayout,
+
     base_texture: Texture,
     base_texture_bind_group: BindGroup,
 
     vertex_buffer: Buffer,
     character_buffer: Buffer,
     scale_factor_uniform: Buffer,
+    shader_param_buffer: Buffer,
     font_texture_bind_group: BindGroup,
     character_buffer_bind_group: BindGroup,
+    shader_param_bind_group: BindGroup,
 
     characters: CharacterBuffer,
     scale_factor: f32,
+    shader_param: ShaderParam,
 
     modifiers_state: ModifiersState,
+
+    start_time: std::time::Instant,
 }
 
 impl State {
@@ -138,50 +146,8 @@ impl State {
             label: Some("Texture Bind Group"),
         });
 
-        let base_texture_size = wgpu::Extent3d {
-            width: 800,
-            height: 600,
-            depth_or_array_layers: 1,
-        };
-
-        let base_texture = device.create_texture(&TextureDescriptor {
-            label: Some("Base Texture"),
-            size: base_texture_size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: TextureDimension::D2,
-            format: TextureFormat::Bgra8Unorm,
-            usage: TextureUsages::TEXTURE_BINDING
-                | TextureUsages::COPY_DST
-                | TextureUsages::RENDER_ATTACHMENT,
-            view_formats: &[],
-        });
-
-        let base_texture_view = base_texture.create_view(&TextureViewDescriptor::default());
-        let base_texture_sampler = device.create_sampler(&SamplerDescriptor {
-            address_mode_u: AddressMode::ClampToEdge,
-            address_mode_v: AddressMode::ClampToEdge,
-            address_mode_w: AddressMode::ClampToEdge,
-            mag_filter: FilterMode::Nearest,
-            min_filter: FilterMode::Nearest,
-            mipmap_filter: FilterMode::Nearest,
-            ..Default::default()
-        });
-
-        let base_texture_bind_group = device.create_bind_group(&BindGroupDescriptor {
-            label: Some("Base Texture Bind Group"),
-            layout: &texture_bind_group_layout,
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: BindingResource::TextureView(&base_texture_view),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: BindingResource::Sampler(&base_texture_sampler),
-                },
-            ],
-        });
+        let (base_texture, base_texture_bind_group) =
+            Self::create_base_texture(&device, &texture_bind_group_layout, size);
 
         let scale_factor = 0.5;
 
@@ -252,8 +218,52 @@ impl State {
             ],
         });
 
+        let mut shader_param = ShaderParam::default();
+        shader_param.screen_size = [size.width, size.height];
+
+        let shader_param_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
+            label: Some("Shader Param Buffer"),
+            contents: bytemuck::bytes_of(&shader_param),
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+        });
+
+        let shader_param_bind_group_layout =
+            device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+                label: Some("Shader Param Bind Bound Layout"),
+                entries: &[BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStages::FRAGMENT,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+            });
+
+        let shader_param_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("Shader Param Bind Group"),
+            layout: &shader_param_bind_group_layout,
+            entries: &[BindGroupEntry {
+                binding: 0,
+                resource: BindingResource::Buffer(BufferBinding {
+                    buffer: &shader_param_buffer,
+                    offset: 0,
+                    size: None,
+                }),
+            }],
+        });
+
         let base_shader = device.create_shader_module(include_wgsl!("shader_base.wgsl"));
-        let final_shader = device.create_shader_module(include_wgsl!("shader_final.wgsl"));
+        let final_shader = device.create_shader_module(ShaderModuleDescriptor {
+            label: Some("Shader Final"),
+            source: ShaderSource::Wgsl(
+                String::from(include_str!("shader_final.pre-wgsl"))
+                    .replacen("//#FXDEF", include_str!("../shaders/vhs"), 1)
+                    .into(),
+            ),
+        });
 
         let base_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Pipeline Layout"),
@@ -301,7 +311,7 @@ impl State {
 
         let final_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: Some("Pipeline Layout"),
-            bind_group_layouts: &[&texture_bind_group_layout],
+            bind_group_layouts: &[&texture_bind_group_layout, &shader_param_bind_group_layout],
             push_constant_ranges: &[],
         });
 
@@ -340,6 +350,8 @@ impl State {
             multiview: None,
         });
 
+        let start_time = std::time::Instant::now();
+
         let new = Self {
             size,
 
@@ -350,19 +362,26 @@ impl State {
             base_render_pipeline,
             final_render_pipeline,
 
+            texture_bind_group_layout,
+
             base_texture,
             base_texture_bind_group,
 
             vertex_buffer,
             character_buffer,
             scale_factor_uniform,
+            shader_param_buffer,
             font_texture_bind_group,
             character_buffer_bind_group,
+            shader_param_bind_group,
 
             characters,
             scale_factor,
+            shader_param,
 
             modifiers_state: ModifiersState::empty(),
+
+            start_time,
         };
 
         new.render_base_texture();
@@ -437,6 +456,7 @@ impl State {
 
             render_pass.set_pipeline(&self.final_render_pipeline);
             render_pass.set_bind_group(0, &self.base_texture_bind_group, &[]);
+            render_pass.set_bind_group(1, &self.shader_param_bind_group, &[]);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.draw(0..6, 0..1);
         }
@@ -483,6 +503,15 @@ impl State {
         self.queue.submit(std::iter::once(commands.finish()));
     }
 
+    pub fn update(&mut self) {
+        let time = std::time::Instant::now()
+            .duration_since(self.start_time)
+            .as_secs_f32();
+
+        self.shader_param.time = time;
+        self.update_shader_param();
+    }
+
     pub fn size(&self) -> PhysicalSize<u32> {
         self.size
     }
@@ -493,6 +522,84 @@ impl State {
             self.config.width = new_size.width;
             self.config.height = new_size.height;
             self.surface.configure(&self.device, &self.config);
+
+            self.recreate_base_texture();
+            self.render_base_texture();
+
+            self.characters.bounds = (
+                f32::floor((new_size.width / 10) as f32 * self.scale_factor) as u32,
+                f32::floor((new_size.height / 10) as f32 * self.scale_factor) as u32,
+            );
+
+            self.shader_param.screen_size = [new_size.width, new_size.height];
+            self.update_shader_param();
         }
+    }
+
+    fn update_shader_param(&self) {
+        self.queue.write_buffer(
+            &self.shader_param_buffer,
+            0,
+            bytemuck::bytes_of(&self.shader_param),
+        );
+    }
+
+    fn create_base_texture(
+        device: &Device,
+        layout: &BindGroupLayout,
+        size: PhysicalSize<u32>,
+    ) -> (Texture, BindGroup) {
+        let base_texture_size = wgpu::Extent3d {
+            width: size.width,
+            height: size.height,
+            depth_or_array_layers: 1,
+        };
+
+        let base_texture = device.create_texture(&TextureDescriptor {
+            label: Some("Base Texture"),
+            size: base_texture_size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: TextureDimension::D2,
+            format: TextureFormat::Bgra8Unorm,
+            usage: TextureUsages::TEXTURE_BINDING
+                | TextureUsages::COPY_DST
+                | TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[],
+        });
+
+        let base_texture_view = base_texture.create_view(&TextureViewDescriptor::default());
+        let base_texture_sampler = device.create_sampler(&SamplerDescriptor {
+            address_mode_u: AddressMode::ClampToEdge,
+            address_mode_v: AddressMode::ClampToEdge,
+            address_mode_w: AddressMode::ClampToEdge,
+            mag_filter: FilterMode::Linear,
+            min_filter: FilterMode::Nearest,
+            mipmap_filter: FilterMode::Nearest,
+            ..Default::default()
+        });
+
+        let base_texture_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            label: Some("Base Texture Bind Group"),
+            layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: BindingResource::TextureView(&base_texture_view),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: BindingResource::Sampler(&base_texture_sampler),
+                },
+            ],
+        });
+
+        (base_texture, base_texture_bind_group)
+    }
+
+    fn recreate_base_texture(&mut self) {
+        self.base_texture.destroy();
+        (self.base_texture, self.base_texture_bind_group) =
+            Self::create_base_texture(&self.device, &self.texture_bind_group_layout, self.size);
     }
 }

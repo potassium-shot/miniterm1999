@@ -20,12 +20,26 @@ fn vs_main(in: VertexInput) -> VertexOutput {
 
 // // // FRAGMENT
 
+struct ShaderParam {
+	screen_size: vec2<u32>,
+	time: f32,
+}
+
 @group(0) @binding(0)
 var t_base: texture_2d<f32>;
 @group(0) @binding(1)
 var s_base: sampler;
 
+@group(1) @binding(0)
+var<uniform> shader_param: ShaderParam;
+
+fn screen_color(coords: vec2<f32>) -> vec4<f32> {
+	return textureSample(t_base, s_base, coords);
+}
+
+//#FXDEF
+
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-  return textureSample(t_base, s_base, in.position.xy);
+	return fx(in.clip_position.xy, in.position.xy, shader_param);
 }

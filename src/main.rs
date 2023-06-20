@@ -6,6 +6,7 @@ use winit::{event::*, event_loop::*, window::WindowBuilder};
 mod character;
 mod character_buffer;
 mod globals;
+mod shader_param;
 mod state;
 mod texture;
 mod vertex;
@@ -44,6 +45,10 @@ async fn main() -> Result<()> {
             if state.input(event) {
                 window.request_redraw();
             }
+        }
+        Event::MainEventsCleared => {
+            state.update();
+            window.request_redraw();
         }
         _ => {}
     });
