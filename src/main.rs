@@ -1,7 +1,11 @@
 use anyhow::Result;
 use state::State;
 use wgpu::SurfaceError;
-use winit::{event::*, event_loop::*, window::WindowBuilder};
+use winit::{
+    event::*,
+    event_loop::*,
+    window::{Fullscreen, WindowBuilder},
+};
 
 mod character;
 mod character_buffer;
@@ -38,6 +42,20 @@ async fn main() -> Result<()> {
                 WindowEvent::Resized(new_size) => state.resize(*new_size),
                 WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
                     state.resize(**new_inner_size)
+                }
+                WindowEvent::KeyboardInput {
+                    input:
+                        KeyboardInput {
+                            state: ElementState::Pressed,
+                            virtual_keycode: Some(VirtualKeyCode::F11),
+                            ..
+                        },
+                    ..
+                } => {
+                    window.set_fullscreen(match window.fullscreen() {
+                        Some(_) => None,
+                        None => Some(Fullscreen::Borderless(None)),
+                    });
                 }
                 _ => {}
             }
