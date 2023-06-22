@@ -410,7 +410,7 @@ impl State {
             winit::event::WindowEvent::ReceivedCharacter(c) => {
                 self.characters.push_char(Character::new(
                     [0.0, 0.0, 0.0],
-                    [1.0, 1.0, 1.0],
+                    [0.1, 1.0, 0.1],
                     c as u32,
                 ));
 

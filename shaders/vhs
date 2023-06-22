@@ -19,13 +19,13 @@ fn color_at(uv: vec2<f32>) -> vec4<f32> {
 }
 
 fn color_space(color: vec4<f32>) -> vec4<f32> {
-	return vec4(color.r + 0.065, color.g + 0.07, color.b + 0.03, color.a);
+	return vec4(color.r + 0.045, color.g + 0.07, color.b + 0.03, color.a);
 }
 
 fn fx(coords: vec2<f32>, uv: vec2<f32>, p: ShaderParam) -> vec4<f32> {
 	let radius: vec2<f32> = vec2(SIZE / f32(p.screen_size.x), SIZE / f32(p.screen_size.y));
     
-	let this_color = color_at(uv);
+	var this_color = color_at(uv);
     var color: vec4<f32> = this_color;
     
     for(var d=0.0; d<TAU; d+=TAU/DIRECTIONS)
@@ -41,11 +41,13 @@ fn fx(coords: vec2<f32>, uv: vec2<f32>, p: ShaderParam) -> vec4<f32> {
 	color = color_space(color);
 
 	if (p.time * 16.0 + coords.y) % 8.0 < 4.0 {
-		color *= 0.6;
+		color *= 0.7;
+		this_color *= 0.9;
 	}
 
 	if (p.time * 16.0 + coords.y) % 320.0 < 160.0 {
-		color *= 0.5;
+		color *= 0.6;
+		this_color *= 0.8;
 	}
 
     return color + this_color;
