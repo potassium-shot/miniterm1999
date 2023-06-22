@@ -1,8 +1,15 @@
 # miniterm 1999
 
-Hello! *miniterm 1999* is an **open source**, **GPU based** terminal emulator for **Linux**, written in **Rust** with [wgpu](https://github.com/gfx-rs/wgpu). At first, it was meant to imitated old school terminals, such as the kind of terminals you might be used to in Fallout 4.
+Hello! *miniterm 1999* is an **open source**, **GPU based** terminal emulator for **Linux**, written in **Rust** with [wgpu](https://github.com/gfx-rs/wgpu).
+
+*Current state of developement:*
+
+![Current state of developement](https://raw.githubusercontent.com/potassium-shot/miniterm1999/master/screenshot.png)
+
+At first, it was meant to imitated old school terminals, such as the kind of terminals you might be used to in Fallout 4.
 
 *Example of a Fallout terminal:*
+
 ![Example of a Fallout terminal](https://static.wikia.nocookie.net/fallout/images/7/74/Terminal.jpg/revision/latest?cb=20170919035537)
 
 This will be done using shaders. But I quickly realised, if you can have old-school VHS like shaders, might as well allow custom shaders as well.
