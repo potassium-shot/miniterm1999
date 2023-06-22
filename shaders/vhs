@@ -6,16 +6,16 @@ const SIZE: f32 = 18.0; // BLUR SIZE (Radius)
 
 const VHS_POWER = 0.9;
 
-fn vhs_transform(coord: f32) -> f32 {
-	var new_coord = coord;
-	new_coord = new_coord * 2.0 - 1.0;
-	new_coord = (1.0 - pow(1.0 - abs(new_coord), VHS_POWER)) * sign(new_coord);
-	new_coord = new_coord * 0.5 + 0.5;
-	return new_coord;
-}
-
 fn color_at(uv: vec2<f32>) -> vec4<f32> {
-	return screen_color(vec2(vhs_transform(uv.x), vhs_transform(uv.y)));
+	var x = uv.x;
+	var y = uv.y;
+	x = x * 2.0 - 1.0;
+	y = y * 2.0 - 1.0;
+	x = (1.0 - pow(1.0 - abs(x), VHS_POWER)) * sign(x);
+	y = (1.0 - pow(1.0 - abs(y), VHS_POWER)) * sign(y);
+	x = x * 0.5 + 0.5;
+	y = y * 0.5 + 0.5;
+	return screen_color(vec2(vhs_transform(x), vhs_transform(y)));
 }
 
 fn color_space(color: vec4<f32>) -> vec4<f32> {
