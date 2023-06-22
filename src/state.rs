@@ -403,6 +403,8 @@ impl State {
                     bytemuck::bytes_of(&self.scale_factor),
                 );
 
+                self.render_base_texture();
+
                 true
             }
             winit::event::WindowEvent::ReceivedCharacter(c) => {

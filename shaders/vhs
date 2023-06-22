@@ -1,27 +1,52 @@
-const tau: f32 = 6.28318530718;
+const TAU: f32 = 6.28318530718;
 
-const directions: f32 = 32.0; // BLUR DIRECTIONS (Default 16.0 - More is better but slower)
-const quality: f32 = 0.088888; // BLUR QUALITY (Default 4.0 - More is better but slower)
-const size: f32 = 25.0; // BLUR SIZE (Radius)
+const DIRECTIONS: f32 = 32.0; // BLUR DIRECTIONS (Default 16.0 - More is better but slower)
+const QUALITY: f32 = 0.088888; // BLUR QUALITY (Default 1.0/4.0 - More is better but slower)
+const SIZE: f32 = 18.0; // BLUR SIZE (Radius)
+
+const VHS_POWER = 0.9;
+
+fn vhs_transform(coord: f32) -> f32 {
+	var new_coord = coord;
+	new_coord = new_coord * 2.0 - 1.0;
+	new_coord = (1.0 - pow(1.0 - abs(new_coord), VHS_POWER)) * sign(new_coord);
+	new_coord = new_coord * 0.5 + 0.5;
+	return new_coord;
+}
+
+fn color_at(uv: vec2<f32>) -> vec4<f32> {
+	return screen_color(vec2(vhs_transform(uv.x), vhs_transform(uv.y)));
+}
 
 fn color_space(color: vec4<f32>) -> vec4<f32> {
-	return vec4(color.r ^ 0.5f, color.g, color.b, color.a);
+	return vec4(color.r + 0.065, color.g + 0.07, color.b + 0.03, color.a);
 }
 
 fn fx(coords: vec2<f32>, uv: vec2<f32>, p: ShaderParam) -> vec4<f32> {
-	let radius: vec2<f32> = vec2(size / f32(p.screen_size.x), size / f32(p.screen_size.y));
+	let radius: vec2<f32> = vec2(SIZE / f32(p.screen_size.x), SIZE / f32(p.screen_size.y));
     
-	let this_color = screen_color(uv);
+	let this_color = color_at(uv);
     var color: vec4<f32> = this_color;
     
-    for(var d=0.0; d<tau; d+=tau/directions)
+    for(var d=0.0; d<TAU; d+=TAU/DIRECTIONS)
     {
-		for(var i=quality; i<=1.0; i+=quality)
+		for(var i=QUALITY; i<=1.0; i+=QUALITY)
         {
-			color += screen_color(uv+vec2(cos(d),sin(d))*radius*i);
+			color += color_at(uv+vec2(cos(d),sin(d))*radius*i);
         }
     }
     
-    color /= 1.0/quality * directions - 180.0;
+    color /= 1.0/QUALITY * DIRECTIONS - 180.0;
+
+	color = color_space(color);
+
+	if (p.time * 16.0 + coords.y) % 8.0 < 4.0 {
+		color *= 0.6;
+	}
+
+	if (p.time * 16.0 + coords.y) % 320.0 < 160.0 {
+		color *= 0.5;
+	}
+
     return color + this_color;
 }
