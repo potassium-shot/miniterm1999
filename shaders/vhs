@@ -4,6 +4,10 @@ const directions: f32 = 32.0; // BLUR DIRECTIONS (Default 16.0 - More is better 
 const quality: f32 = 0.088888; // BLUR QUALITY (Default 4.0 - More is better but slower)
 const size: f32 = 25.0; // BLUR SIZE (Radius)
 
+fn color_space(color: vec4<f32>) -> vec4<f32> {
+	return vec4(color.r ^ 0.5f, color.g, color.b, color.a);
+}
+
 fn fx(coords: vec2<f32>, uv: vec2<f32>, p: ShaderParam) -> vec4<f32> {
 	let radius: vec2<f32> = vec2(size / f32(p.screen_size.x), size / f32(p.screen_size.y));
     
