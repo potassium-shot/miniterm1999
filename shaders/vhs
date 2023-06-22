@@ -1,21 +1,27 @@
 const TAU: f32 = 6.28318530718;
+const HALF_PI: f32 = 3.14159265359;
 
 const DIRECTIONS: f32 = 32.0; // BLUR DIRECTIONS (Default 16.0 - More is better but slower)
 const QUALITY: f32 = 0.088888; // BLUR QUALITY (Default 1.0/4.0 - More is better but slower)
 const SIZE: f32 = 18.0; // BLUR SIZE (Radius)
 
 const VHS_POWER = 0.9;
+const VHS_CORNERS = 0.075;
+const VHS_CORNERS_POWER = 2.0;
 
 fn color_at(uv: vec2<f32>) -> vec4<f32> {
 	var x = uv.x;
 	var y = uv.y;
 	x = x * 2.0 - 1.0;
 	y = y * 2.0 - 1.0;
+	let x1 = x;
+	let y1 = y;
 	x = (1.0 - pow(1.0 - abs(x), VHS_POWER)) * sign(x);
 	y = (1.0 - pow(1.0 - abs(y), VHS_POWER)) * sign(y);
 	x = x * 0.5 + 0.5;
 	y = y * 0.5 + 0.5;
-	return screen_color(vec2(vhs_transform(x), vhs_transform(y)));
+	y += pow(abs(x1), VHS_CORNERS_POWER) * VHS_CORNERS * y1;
+	return screen_color(vec2(x, y));
 }
 
 fn color_space(color: vec4<f32>) -> vec4<f32> {
@@ -37,15 +43,18 @@ fn fx(coords: vec2<f32>, uv: vec2<f32>, p: ShaderParam) -> vec4<f32> {
     }
     
     color /= 1.0/QUALITY * DIRECTIONS - 180.0;
-
 	color = color_space(color);
 
-	if (p.time * 16.0 + coords.y) % 8.0 < 4.0 {
+	let x1 = uv.x * 2.0 - 1.0;
+	let y1 = uv.y * 2.0 - 1.0;
+	let vhs_y = p.time * 16.0 + coords.y + pow(abs(x1), VHS_CORNERS_POWER) * VHS_CORNERS * y1 * f32(p.screen_size.y);
+
+	if vhs_y % 8.0 < 4.0 {
 		color *= 0.7;
 		this_color *= 0.9;
 	}
 
-	if (p.time * 16.0 + coords.y) % 320.0 < 160.0 {
+	if vhs_y % 400.0 < 128.0 {
 		color *= 0.6;
 		this_color *= 0.8;
 	}
