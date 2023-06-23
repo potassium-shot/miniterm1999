@@ -20,6 +20,7 @@ fn color_at(uv: vec2<f32>) -> vec4<f32> {
 	y = (1.0 - pow(1.0 - abs(y), VHS_POWER)) * sign(y);
 	x = x * 0.5 + 0.5;
 	y = y * 0.5 + 0.5;
+	x += pow(abs(y1), VHS_CORNERS_POWER) * VHS_CORNERS * x1;
 	y += pow(abs(x1), VHS_CORNERS_POWER) * VHS_CORNERS * y1;
 	return screen_color(vec2(x, y));
 }
