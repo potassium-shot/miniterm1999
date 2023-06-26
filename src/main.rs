@@ -1,5 +1,8 @@
+use std::{io::Write, process::Command};
+
 use anyhow::Result;
 use state::State;
+use try_read::TryReader;
 use wgpu::SurfaceError;
 use winit::{
     event::*,
@@ -13,11 +16,17 @@ mod globals;
 mod shader_param;
 mod state;
 mod texture;
+mod try_read;
 mod vertex;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
+
+    let process = ptyprocess::PtyProcess::spawn(Command::new(std::env::var("SHELL")?))?;
+    let reader = TryReader::new(process.get_pty_stream()?);
+
+    let mut char_buffer = [0u8; 4];
 
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
@@ -57,6 +66,11 @@ async fn main() -> Result<()> {
                         None => Some(Fullscreen::Borderless(None)),
                     });
                 }
+                WindowEvent::ReceivedCharacter(c) => {
+                    // stream
+                    //     .write_all(c.encode_utf8(&mut char_buffer).as_bytes())
+                    //     .unwrap_or_else(|e| eprintln!("Could not write char to stdin of pty: {e}"));
+                }
                 _ => {}
             }
 
@@ -65,6 +79,10 @@ async fn main() -> Result<()> {
             }
         }
         Event::MainEventsCleared => {
+            if let Some(str) = reader.try_read() {
+                state.push_str(&str);
+            }
+
             state.update();
             window.request_redraw();
         }

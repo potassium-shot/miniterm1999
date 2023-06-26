@@ -407,20 +407,6 @@ impl State {
 
                 true
             }
-            winit::event::WindowEvent::ReceivedCharacter(c) => {
-                self.characters.push_char(Character::new(
-                    [0.0, 0.0, 0.0],
-                    [0.1, 1.0, 0.1],
-                    c as u32,
-                ));
-
-                self.characters
-                    .write_changes(&self.queue, &self.character_buffer);
-
-                self.render_base_texture();
-
-                true
-            }
             winit::event::WindowEvent::ModifiersChanged(new_state) => {
                 self.modifiers_state = new_state;
                 false
@@ -536,6 +522,20 @@ impl State {
             self.shader_param.screen_size = [new_size.width, new_size.height];
             self.update_shader_param();
         }
+    }
+
+    pub fn push_str(&mut self, string: &str) {
+        for char in string.chars() {
+            self.characters.push_char(Character::new(
+                [0.0, 0.0, 0.0],
+                [1.0, 1.0, 1.0],
+                char as u32,
+            ));
+        }
+
+        self.characters
+            .write_changes(&self.queue, &self.character_buffer);
+        self.render_base_texture();
     }
 
     fn update_shader_param(&self) {
